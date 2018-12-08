@@ -43,15 +43,6 @@ defmodule ShadowMesh.Relay do
   defp send_payload(socket, conv, sn, payload) do
     len = byte_size(payload)
     p = <<2, conv::binary-16, sn::16, len::16>>
-    IO.puts("----------------")
-    IO.puts(inspect(conv))
-    IO.puts(inspect(sn))
-    IO.puts(inspect(payload))
-    IO.puts(inspect(len))
-    IO.puts(inspect(socket))
-    IO.puts(inspect(p))
-
-    IO.puts("================")
     :ok = :gen_tcp.send(socket, p)
     :ok = :gen_tcp.send(socket, payload)
   end
@@ -63,7 +54,7 @@ defmodule ShadowMesh.Relay do
   end
 
   defp recv(socket, group_id) do
-    {:ok, header} = :gen_tcp.recv(socket, 22)
+    {:ok, header} = :gen_tcp.recv(socket, 21)
     relay(header, group_id, socket)
     recv(socket, group_id)
   end
