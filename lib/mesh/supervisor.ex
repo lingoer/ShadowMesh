@@ -10,7 +10,7 @@ defmodule ShadowMesh.Supervisor do
     children = [
       {Registry, keys: :unique, name: Courier},
       {Registry, keys: :duplicate, name: Relay}
-      | client_spec 
+      | server_spec 
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

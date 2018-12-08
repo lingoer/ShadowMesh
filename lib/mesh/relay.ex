@@ -74,7 +74,7 @@ defmodule ShadowMesh.Relay do
     end
   end
 
-  defp relay(<<1, conv::binary-16, sn::16, _len::16>>, _group_id, _socket) do
+  defp relay(<<1, conv::binary-16, sn::16, _len::16>>, group_id, _socket) do
     case ShadowMesh.Courier.send(conv, sn, :dis_conn) do
       {:error, _conv} -> fail(conv, group_id)
       _ -> :ok

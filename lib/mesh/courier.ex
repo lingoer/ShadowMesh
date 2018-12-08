@@ -48,6 +48,7 @@ defmodule ShadowMesh.Courier do
         recv(socket, group_id, conv, sn+1)
       {:error, :closed} ->
         ShadowMesh.Relay.dis_conn(conv, group_id)
+        GenServer.stop(self)
     end
   end
 
