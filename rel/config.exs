@@ -46,8 +46,8 @@ end
 # when running `mix release`, the first release in the file
 # will be used by default
 
-release :ess do
-  set version: current_version(:ess)
+release :mesh do
+  set version: current_version(:mesh)
   set applications: [
     :runtime_tools
   ]

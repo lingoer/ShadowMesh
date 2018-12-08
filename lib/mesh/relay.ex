@@ -17,9 +17,14 @@ defmodule ShadowMesh.Relay do
     GenServer.call(relay, {:send, conv, sn, payload})
   end
 
-  def dis_conn(conv, group_id) do
+  def fail(group_id, conv) do
     relay = pick_relay(group_id)
-    GenServer.call(relay, {:dis_conn, conv, 0, ""})
+    GenServer.call(relay, {:fail, conv, 0, ""})
+  end
+
+  def dis_conn(group_id, conv, sn) do
+    relay = pick_relay(group_id)
+    GenServer.call(relay, {:dis_conn, conv, sn, ""})
   end
 
   def connect(conv, group_id) do
@@ -65,20 +70,27 @@ defmodule ShadowMesh.Relay do
          :ok <- :gen_tcp.controlling_process(socket, server) do
       :ok
     else
-      _error -> dis_conn(conv, group_id)
+      _error -> fail(conv, group_id)
     end
   end
 
-  defp relay(<<1, conv::binary-16, _sn::16, _len::16>>, _group_id, _socket) do
-    with [{courier, _value}] <- Registry.lookup(Courier, conv), do: GenServer.stop(courier)
+  defp relay(<<1, conv::binary-16, sn::16, _len::16>>, _group_id, _socket) do
+    case ShadowMesh.Courier.send(conv, sn, :dis_conn) do
+      {:error, _conv} -> fail(conv, group_id)
+      _ -> :ok
+    end
   end
 
   defp relay(<<2, conv::binary-16, sn::16, len::16>>, group_id, socket) do
     {:ok, data} = :gen_tcp.recv(socket, len)
     case ShadowMesh.Courier.send(conv, sn, data) do
-      {:error, _conv} -> dis_conn(conv, group_id)
+      {:error, _conv} -> fail(conv, group_id)
       _ -> :ok
     end
+  end
+
+  defp relay(<<3, conv::binary-16, _sn::16, _len::16>>, _group_id, _socket) do
+    with [{courier, _value}] <- Registry.lookup(Courier, conv), do: GenServer.stop(courier)
   end
 
   def handle_call({:send, conv, sn, payload}, _, {socket, group_id}) do
@@ -86,8 +98,13 @@ defmodule ShadowMesh.Relay do
     {:reply, :ok, {socket, group_id}}
   end
 
-  def handle_call({:dis_conn, conv, _sn, _payload}, _, {socket, group_id}) do
-    :ok = :gen_tcp.send(socket, <<1, conv::binary-16, 0::16, 0::16>>)
+  def handle_call({:dis_conn, conv, sn, _payload}, _, {socket, group_id}) do
+    :ok = :gen_tcp.send(socket, <<1, conv::binary-16, sn::16, 0::16>>)
+    {:reply, :ok, {socket, group_id}}
+  end
+
+  def handle_call({:fail, conv, sn, _payload}, _, {socket, group_id}) do
+    :ok = :gen_tcp.send(socket, <<3, conv::binary-16, sn::16, 0::16>>)
     {:reply, :ok, {socket, group_id}}
   end
 

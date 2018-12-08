@@ -23,13 +23,14 @@ defmodule ShadowMesh.Courier do
 
   def handle_call({:send, sn, data}, _, {group_id, queue, sn_acc, current_sn, socket, conv}) do
     sn_acc = if sn==0, do: sn_acc+1, else: sn_acc
-    if length(queue) < 1024 do
+    if length(queue) < 65535 do
       case send_queue(Enum.sort([{sn_acc, sn, data}| queue]), current_sn, socket) do 
+        :dis_conn->{:stop, "Connection Closed", {:ok, conv}, {group_id, queue, sn_acc, current_sn, socket, conv}}
         {queue, current_sn} -> {:reply, :ok, {group_id, queue, sn_acc, current_sn, socket, conv}}
-        :error -> {:stop, :error, {:error, conv}, {group_id, queue, sn_acc, current_sn, socket, conv}}
+        :error -> {:stop, "Send_Queue_Failed", {:error, conv}, {group_id, queue, sn_acc, current_sn, socket, conv}}
       end
     else
-        {:stop, :error, {:error, conv}, {group_id, queue, sn_acc, current_sn, socket, conv}}
+        {:stop, "Max_Queue", {:error, conv}, {group_id, queue, sn_acc, current_sn, socket, conv}}
     end
   end
 
@@ -50,6 +51,10 @@ defmodule ShadowMesh.Courier do
     end
   end
 
+  defp send_queue([{_sn_acc, sn, :dis_conn} | tail], current_sn, socket) when sn == current_sn do
+    :gen_tcp.close(socket)
+    :dis_conn
+  end
   defp send_queue([{_sn_acc, sn, data} | tail], current_sn, socket) when sn == current_sn do
     case :gen_tcp.send(socket, data) do
       :ok -> send_queue(tail, sn+1, socket)
