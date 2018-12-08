@@ -70,13 +70,13 @@ defmodule ShadowMesh.Relay do
          :ok <- :gen_tcp.controlling_process(socket, server) do
       :ok
     else
-      _error -> fail(conv, group_id)
+      _error -> fail(group_id, conv)
     end
   end
 
   defp relay(<<1, conv::binary-16, sn::16, _len::16>>, group_id, _socket) do
     case ShadowMesh.Courier.send(conv, sn, :dis_conn) do
-      {:error, _conv} -> fail(conv, group_id)
+      {:error, _conv} -> fail(group_id, conv)
       _ -> :ok
     end
   end
@@ -84,7 +84,7 @@ defmodule ShadowMesh.Relay do
   defp relay(<<2, conv::binary-16, sn::16, len::16>>, group_id, socket) do
     {:ok, data} = :gen_tcp.recv(socket, len)
     case ShadowMesh.Courier.send(conv, sn, data) do
-      {:error, _conv} -> fail(conv, group_id)
+      {:error, _conv} -> fail(group_id, conv)
       _ -> :ok
     end
   end
