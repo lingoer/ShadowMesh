@@ -6,6 +6,7 @@ defmodule ShadowMesh.Courier do
     with {:ok, _pid} <- Registry.register(Courier, conv, []),
          spawn_link(fn -> recv(socket, group_id, conv, 0) end)
     do
+      IO.puts("Courier Init: #{inspect(conv)}")
       {:ok, {group_id, [], 0, 0,socket, conv}}
     else
       _e -> :ignore
@@ -16,7 +17,9 @@ defmodule ShadowMesh.Courier do
     case Registry.lookup(Courier, conv_id) do
       [{courier, _value}] ->
         if Process.alive?(courier), do: GenServer.call(courier, {sn, data}), else: {:error, conv_id}
-      _ -> {:error, conv_id}
+      _ -> 
+        IO.puts("No conv?")
+        {:error, conv_id}
     end
   end
 
@@ -32,7 +35,8 @@ defmodule ShadowMesh.Courier do
     end
   end
 
-  def terminate(_reason, {_group_id, _queue, _sn_acc, _current_sn, _socket, conv}) do
+  def terminate(reason, {_group_id, _queue, _sn_acc, _current_sn, _socket, conv}) do
+    IO.puts("Term: #{reason}")
     Registry.unregister(Courier, conv)
   end
 
