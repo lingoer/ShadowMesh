@@ -10,14 +10,14 @@ defmodule ShadowMesh.Supervisor do
     children = [
       {Registry, keys: :unique, name: Courier},
       {Registry, keys: :duplicate, name: Relay}
-      | client_spec
+      | server_spec 
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
   end
 
   def init_relay(ip, port, local_ip, group_id, id) do
-    {:ok, socket} = :gen_tcp.connect(ip, port,[:binary, packet: :raw, active: false, ip: local_ip])
+    {:ok, socket} = :gen_tcp.connect(ip, port,[:binary, packet: :raw, active: false])
     :gen_tcp.send(socket,<<group_id>>)
     {:ok, pid} = GenServer.start_link(ShadowMesh.Relay , {socket, group_id}, name: id)
     :gen_tcp.controlling_process(socket, pid)
@@ -25,20 +25,20 @@ defmodule ShadowMesh.Supervisor do
   end
 
   def server_spec do
-    [{ShadowMesh.Server, {{0,0,0,0}, 2080}}]
+    [{ShadowMesh.Server, {{127,0,0,1}, 2080}}]
   end
 
   def client_spec do
     [
       %{
         id: :r1,
-        start: {__MODULE__, :init_relay, [{47,91,230,79}, 2080, {192,168,10,100}, 0, :r1]}
+        start: {__MODULE__, :init_relay, [{127,0,0,1}, 2080, {192,168,10,100}, 0, :r1]}
       },
       %{
         id: :r2,
-        start: {__MODULE__, :init_relay, [{47,91,230,79}, 2080, {192,168,10,100}, 0, :r2]}
+        start: {__MODULE__, :init_relay, [{127,0,0,1}, 2080, {192,168,10,100}, 0, :r2]}
       },
-      {ShadowMesh.Client, {{0, 0, 0, 0}, 8765}}
+      {ShadowMesh.Client, {{127, 0, 0, 1}, 8764}}
     ]
   end
 end

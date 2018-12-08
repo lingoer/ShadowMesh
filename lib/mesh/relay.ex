@@ -61,7 +61,7 @@ defmodule ShadowMesh.Relay do
 
   defp relay(<<0, conv::binary-16, _sn::16, _len::16>>, group_id, _socket) do
     IO.puts("========================================")
-    IO.puts("SEND CONNECT #{inspect(conv)}")
+    IO.puts("GOT CONNECT #{inspect(conv)}")
     IO.puts("----------------------------------------")
     with {:ok, socket} <- :gen_tcp.connect('localhost', 8765, [:binary, packet: :raw, active: false]),
          {:ok, server} <- GenServer.start(ShadowMesh.Courier, {conv, group_id, socket}),
@@ -74,14 +74,14 @@ defmodule ShadowMesh.Relay do
 
   defp relay(<<1, conv::binary-16, _sn::16, _len::16>>, _group_id, _socket) do
     IO.puts("========================================")
-    IO.puts("SEND DISSCONNECT: #{inspect(conv)}")
+    IO.puts("GOT DISSCONNECT: #{inspect(conv)}")
     IO.puts("----------------------------------------")
     with [{courier, _value}] <- Registry.lookup(Courier, conv), do: GenServer.stop(courier)
   end
 
   defp relay(<<2, conv::binary-16, sn::16, len::16>>, group_id, socket) do
     IO.puts("========================================")
-    IO.puts("SEND DATA #{inspect(conv)}")
+    IO.puts("GOT DATA #{inspect(conv)}")
     IO.puts("----------------------------------------")
     {:ok, data} = :gen_tcp.recv(socket, len)
     case ShadowMesh.Courier.send(conv, sn, data) do

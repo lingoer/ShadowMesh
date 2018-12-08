@@ -6,7 +6,6 @@ defmodule ShadowMesh.Courier do
     with {:ok, _pid} <- Registry.register(Courier, conv, []),
          spawn_link(fn -> recv(socket, group_id, conv, 0) end)
     do
-      IO.puts("Courier Init: #{inspect(conv)}")
       {:ok, {group_id, [], 0, 0,socket, conv}}
     else
       _e -> :ignore
@@ -26,7 +25,7 @@ defmodule ShadowMesh.Courier do
     sn_acc = if sn==0, do: sn_acc+1, else: sn_acc
     if length(queue) < 1024 do
       case send_queue(Enum.sort([{sn_acc, sn, data}| queue]), current_sn, socket) do 
-        {queue, current_sn} -> {:reply, :ok, {group_id, queue, sn_acc, current_sn, socket}}
+        {queue, current_sn} -> {:reply, :ok, {group_id, queue, sn_acc, current_sn, socket, conv}}
         :error -> {:stop, :error, {:error, conv}, {group_id, queue, sn_acc, current_sn, socket, conv}}
       end
     else
@@ -34,16 +33,21 @@ defmodule ShadowMesh.Courier do
     end
   end
 
-  def terminate(reason, {_group_id, _queue, _sn_acc, _current_sn, _socket, conv}) do
+  def terminate(reason, {group_id, _queue, _sn_acc, _current_sn, _socket, conv}) do
     Registry.unregister(Courier, conv)
   end
 
 
   defp recv(socket, group_id, conv, sn) do
     # error handling? unregister?
-    {:ok, payload} = :gen_tcp.recv(socket, 0)
-    ShadowMesh.Relay.send(group_id, conv, sn, payload)
-    recv(socket, group_id, conv, sn+1)
+
+    case :gen_tcp.recv(socket, 0) do 
+      {:ok, payload} ->
+        ShadowMesh.Relay.send(group_id, conv, sn, payload)
+        recv(socket, group_id, conv, sn+1)
+      {:error, :closed} ->
+        ShadowMesh.Relay.dis_conn(conv, group_id)
+    end
   end
 
   defp send_queue([{_sn_acc, sn, data} | tail], current_sn, socket) when sn == current_sn do
