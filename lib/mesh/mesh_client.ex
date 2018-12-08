@@ -19,8 +19,8 @@ defmodule ShadowMesh.Client do
 
   def init_conn(client) do
     conv = UUID.uuid1() |> UUID.string_to_binary!
-    {:ok, pid} = GenServer.start(ShadowMesh.Courier, {conv, 0, client})
     ShadowMesh.Relay.connect(conv, 0)
+    {:ok, pid} = GenServer.start(ShadowMesh.Courier, {conv, 0, client})
     :ok = :gen_tcp.controlling_process(client, pid)
   end
 
