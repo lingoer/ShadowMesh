@@ -16,9 +16,8 @@ defmodule ShadowMesh.Courier do
   def send(conv_id, sn, data) do
     case Registry.lookup(Courier, conv_id) do
       [{courier, _value}] ->
-        if Process.alive?(courier), do: GenServer.call(courier, {sn, data}), else: {:error, conv_id}
+        if Process.alive?(courier), do: GenServer.call(courier, {:send, sn, data}), else: {:error, conv_id}
       _ -> 
-        IO.puts("No conv?")
         {:error, conv_id}
     end
   end
@@ -36,7 +35,6 @@ defmodule ShadowMesh.Courier do
   end
 
   def terminate(reason, {_group_id, _queue, _sn_acc, _current_sn, _socket, conv}) do
-    IO.puts("Term: #{reason}")
     Registry.unregister(Courier, conv)
   end
 
