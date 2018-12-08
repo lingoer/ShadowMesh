@@ -25,7 +25,7 @@ defmodule ShadowMesh.Supervisor do
   end
 
   def server_spec do
-    [{ShadowMesh.Server, {{127,0,0,1}, 2080}}]
+    [{ShadowMesh.Server, {{0,0,0,0}, 2080}}]
   end
 
   def client_spec do
