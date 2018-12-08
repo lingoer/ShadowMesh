@@ -81,16 +81,19 @@ defmodule ShadowMesh.Relay do
     end
   end
 
-  def handle_call({:send, conv, sn, payload}, _, {socket, _group_id}) do
+  def handle_call({:send, conv, sn, payload}, _, {socket, group_id}) do
     send_payload(socket, conv, sn, payload)
+    {:reply, :ok, {socket, group_id}}
   end
 
   def handle_call({:dis_conn, conv, _sn, _payload}, _, {socket, _group_id}) do
     :ok = :gen_tcp.send(socket, <<1, conv::binary-16, 0::16, 0::16>>)
+    {:reply, :ok, {socket, group_id}}
   end
 
-  def handle_call({:connect, conv, _sn, _payload}, _, {socket, _group_id}) do
+  def handle_call({:connect, conv, _sn, _payload}, _, {socket, group_id}) do
     :ok = :gen_tcp.send(socket, <<0, conv::binary-16, 0::16, 0::16>>)
+    {:reply, :ok, {socket, group_id}}
   end
 end
 
