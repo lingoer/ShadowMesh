@@ -14,7 +14,7 @@ defmodule ShadowMesh.Server do
     {:ok, socket} = :gen_tcp.accept(port)
     pid = spawn(fn -> init_conn(socket) end)
     :ok = :gen_tcp.controlling_process(socket, pid)
-    loop_acceptor(socket)
+    loop_acceptor(port)
   end
 
   def init_conn(client) do
