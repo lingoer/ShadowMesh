@@ -6,12 +6,12 @@ defmodule ShadowMesh.Server do
   end
 
   def accept({ip, port}) do
-    {:ok, socket} = :gen_tcp.listen(port,[:binary, ip: ip, active: false, keepalive: true, reuseaddr: true])
+    {:ok, socket} = :gen_tcp.listen(port,[:binary, {:active, false}, keepalive: true, reuseaddr: true])
     loop_acceptor(socket)
   end
 
-  def loop_acceptor(socket) do
-    {:ok, socket} = :gen_tcp.accept(socket)
+  def loop_acceptor(port) do
+    {:ok, socket} = :gen_tcp.accept(port)
     pid = spawn(fn -> init_conn(socket) end)
     :ok = :gen_tcp.controlling_process(socket, pid)
     loop_acceptor(socket)
