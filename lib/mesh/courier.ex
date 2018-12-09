@@ -23,6 +23,7 @@ defmodule ShadowMesh.Courier do
   end
 
   defp send_queue([{sn, :dis_conn} | tail], nxt_sn, socket) when sn == nxt_sn do
+    Logger.info("DISSSSSSS: #{inspect(tail)}")
     {:dis_conn, tail}
   end
   defp send_queue([{<<sn::16>>, data} | tail], <<nxt_sn::16>>, socket) when sn == nxt_sn do
@@ -46,7 +47,7 @@ defmodule ShadowMesh.Courier do
   def handle_call({:send, sn, data}, {sender, _}, {group_id, queues, nxt_sn, socket, conv}) do
     queues = Map.update(queues, sender, [{sn, data}], &([{sn, data}| &1]))
     case send_queues(queues, Map.keys(queues), socket, nxt_sn) do
-      {:dis_conn, queues} -> {:stop, :normal, {:ok, conv}, {group_id, queues, nxt_sn, socket, conv}}
+      {:dis_conn, queues} -> {:reply, :ok, {group_id, queues, nxt_sn, socket, conv}}
       {:error, queues} -> {:stop, "Send_Queue_Failed", {:error, conv}, {group_id, queues, nxt_sn, socket, conv}}
       {nxt_sn, queues} -> {:reply, :ok, {group_id, queues, nxt_sn, socket, conv}}
     end
