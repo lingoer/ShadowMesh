@@ -23,8 +23,6 @@ defmodule ShadowMesh.Courier do
   end
 
   defp send_queue([{sn, :dis_conn} | tail], nxt_sn, socket) when sn == nxt_sn do
-    Logger.info("DISSSSSSS: #{inspect(tail)}")
-    :gen_tcp.shutdown(socket, :write)
     {:dis_conn, tail}
   end
   defp send_queue([{<<sn::16>>, data} | tail], <<nxt_sn::16>>, socket) when sn == nxt_sn do

@@ -13,7 +13,6 @@ defmodule ShadowMesh.Client do
   def loop_acceptor(socket) do
     {:ok, client} = :gen_tcp.accept(socket)
     pid = spawn(fn -> init_conn(client) end)
-    :ok = :gen_tcp.controlling_process(client, pid)
     loop_acceptor(socket)
   end
 
@@ -21,7 +20,6 @@ defmodule ShadowMesh.Client do
     conv = UUID.uuid1() |> UUID.string_to_binary!
     ShadowMesh.Relay.connect(conv, 0)
     {:ok, pid} = GenServer.start(ShadowMesh.Courier, {conv, 0, client})
-    :ok = :gen_tcp.controlling_process(client, pid)
   end
 
 end

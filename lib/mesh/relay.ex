@@ -66,8 +66,7 @@ defmodule ShadowMesh.Relay do
 
   defp relay(<<0, conv::binary-16, _sn::binary-2, _len::16>>, group_id, _socket) do
     with {:ok, socket} <- :gen_tcp.connect('localhost', 8765, [:binary, packet: :raw, active: false]),
-         {:ok, server} <- GenServer.start(ShadowMesh.Courier, {conv, group_id, socket}),
-         :ok <- :gen_tcp.controlling_process(socket, server) do
+         {:ok, server} <- GenServer.start(ShadowMesh.Courier, {conv, group_id, socket}) do
       :ok
     else
       _error -> fail(group_id, conv)
