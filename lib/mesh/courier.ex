@@ -46,11 +46,14 @@ defmodule ShadowMesh.Courier do
   end
 
   def handle_call({:send, sn, data}, {sender, _}, {group_id, queues, nxt_sn, socket, conv}) do
-    queues = Map.update(queues, sender, [{sn, data}], &([{sn, data}| &1]))
+    queues = Map.update(queues, sender, [{sn, data}], &(List.insert_at(&1, -1, {sn, data})))
+    Logger.info("#{conv}:::::#{}")
     case send_queues(queues, Map.keys(queues), socket, nxt_sn) do
       {:dis_conn, queues} -> {:stop, :normal, :ok, {group_id, queues, nxt_sn, socket, conv}}
       {:error, queues} -> {:stop, "Send_Queue_Failed", {:error, conv}, {group_id, queues, nxt_sn, socket, conv}}
-      {nxt_sn, queues} -> {:reply, :ok, {group_id, queues, nxt_sn, socket, conv}}
+      {nxt_sn, queues} -> 
+        Logger.info("#{conv}=======#{inspect(queues)}")
+        {:reply, :ok, {group_id, queues, nxt_sn, socket, conv}}
     end
   end
 
