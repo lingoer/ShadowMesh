@@ -64,7 +64,7 @@ defmodule ShadowMesh.Relay do
     recv(socket, group_id)
   end
 
-  defp relay(<<0, conv::binary-16, _sn::16, _len::16>>, group_id, _socket) do
+  defp relay(<<0, conv::binary-16, _sn::binary-2, _len::16>>, group_id, _socket) do
     with {:ok, socket} <- :gen_tcp.connect('localhost', 8765, [:binary, packet: :raw, active: false]),
          {:ok, server} <- GenServer.start(ShadowMesh.Courier, {conv, group_id, socket}),
          :ok <- :gen_tcp.controlling_process(socket, server) do
@@ -74,14 +74,14 @@ defmodule ShadowMesh.Relay do
     end
   end
 
-  defp relay(<<1, conv::binary-16, sn::16, _len::16>>, group_id, _socket) do
+  defp relay(<<1, conv::binary-16, sn::binary-2, _len::16>>, group_id, _socket) do
     case ShadowMesh.Courier.send(conv, sn, :dis_conn) do
       {:error, _conv} -> fail(group_id, conv)
       _ -> :ok
     end
   end
 
-  defp relay(<<2, conv::binary-16, sn::16, len::16>>, group_id, socket) do
+  defp relay(<<2, conv::binary-16, sn::binary-2, len::16>>, group_id, socket) do
     {:ok, data} = :gen_tcp.recv(socket, len)
     case ShadowMesh.Courier.send(conv, sn, data) do
       {:error, _conv} -> fail(group_id, conv)
@@ -89,7 +89,7 @@ defmodule ShadowMesh.Relay do
     end
   end
 
-  defp relay(<<3, conv::binary-16, _sn::16, _len::16>>, _group_id, _socket) do
+  defp relay(<<3, conv::binary-16, _sn::binary-2, _len::16>>, _group_id, _socket) do
     with [{courier, _value}] <- Registry.lookup(Courier, conv), do: GenServer.stop(courier)
   end
 

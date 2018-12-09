@@ -32,7 +32,7 @@ defmodule ShadowMesh.Supervisor do
     [
       %{
         id: :r1,
-        start: {__MODULE__, :init_relay, [{0,0,0,0}, 2080, {192,168,11,100}, 0, :r1]}
+        start: {__MODULE__, :init_relay, [{0,0,0,0}, 2080, {192,168,10,100}, 0, :r1]}
       },
       %{
         id: :r2,

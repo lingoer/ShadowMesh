@@ -1,4 +1,5 @@
 defmodule ShadowMesh.Courier do
+  require Logger
   use GenServer, restart: :temporary
 
   # pass socket in
@@ -6,7 +7,7 @@ defmodule ShadowMesh.Courier do
     with {:ok, _pid} <- Registry.register(Courier, conv, []),
          spawn_link(fn -> recv(socket, group_id, conv, 0) end)
     do
-      {:ok, {group_id, [], 0, 0,socket, conv}}
+      {:ok, {group_id, %{}, <<0::16>>, socket, conv}}
     else
       _e -> :ignore
     end
@@ -21,27 +22,42 @@ defmodule ShadowMesh.Courier do
     end
   end
 
-  def handle_call({:send, sn, data}, _, {group_id, queue, sn_acc, current_sn, socket, conv}) do
-    sn_acc = if sn==0, do: sn_acc+1, else: sn_acc
-    if length(queue) < 65535 do
-      case send_queue(Enum.sort([{sn_acc, sn, data}| queue]), current_sn, socket) do 
-        :dis_conn->{:stop, "Connection Closed", {:ok, conv}, {group_id, queue, sn_acc, current_sn, socket, conv}}
-        {queue, current_sn} -> {:reply, :ok, {group_id, queue, sn_acc, current_sn, socket, conv}}
-        :error -> {:stop, "Send_Queue_Failed", {:error, conv}, {group_id, queue, sn_acc, current_sn, socket, conv}}
-      end
-    else
-        {:stop, "Max_Queue", {:error, conv}, {group_id, queue, sn_acc, current_sn, socket, conv}}
+  defp send_queue([{sn, :dis_conn} | tail], nxt_sn, socket) when sn == nxt_sn do
+    {:dis_conn, tail}
+  end
+  defp send_queue([{<<sn::16>>, data} | tail], <<nxt_sn::16>>, socket) when sn == nxt_sn do
+    case :gen_tcp.send(socket, data) do
+      :ok ->
+        send_queue(tail, <<(sn+1)::16>>, socket)
+      e ->
+        {:error, [{<<sn::16>>, data}, tail]} #?
+    end
+  end
+  defp send_queue(queue, nxt_sn, _socket) do
+    {nxt_sn, queue}
+  end
+
+  defp send_queues(queues, [], socket, nxt_sn), do: {nxt_sn, queues}
+  defp send_queues(queues, [key| keys], socket, nxt_sn) do
+    {nxt_sn, queues} = Map.get_and_update(queues, key, &(send_queue(&1, nxt_sn, socket)))
+    send_queues(queues, keys, socket, nxt_sn)
+  end
+
+  def handle_call({:send, sn, data}, {sender, _}, {group_id, queues, nxt_sn, socket, conv}) do
+    queues = Map.update(queues, sender, [{sn, data}], &([{sn, data}| &1]))
+    case send_queues(queues, Map.keys(queues), socket, nxt_sn) do
+      {:dis_conn, queues} -> {:stop, :normal, {:ok, conv}, {group_id, queues, nxt_sn, socket, conv}}
+      {:error, queues} -> {:stop, "Send_Queue_Failed", {:error, conv}, {group_id, queues, nxt_sn, socket, conv}}
+      {nxt_sn, queues} -> {:reply, :ok, {group_id, queues, nxt_sn, socket, conv}}
     end
   end
 
-  def terminate(reason, {group_id, _queue, _sn_acc, _current_sn, _socket, conv}) do
+  def terminate(reason, {group_id, _queues, _nxt_sn, _socket, conv}) do
     Registry.unregister(Courier, conv)
   end
 
-
   defp recv(socket, group_id, conv, sn) do
     # error handling? unregister?
-
     case :gen_tcp.recv(socket, 0) do 
       {:ok, payload} ->
         ShadowMesh.Relay.send(group_id, conv, sn, payload)
@@ -50,18 +66,4 @@ defmodule ShadowMesh.Courier do
         ShadowMesh.Relay.dis_conn(group_id, conv, sn)
     end
   end
-
-  defp send_queue([{_sn_acc, sn, :dis_conn} | tail], current_sn, socket) when sn == current_sn do
-    :gen_tcp.close(socket)
-    :dis_conn
-  end
-  defp send_queue([{_sn_acc, sn, data} | tail], current_sn, socket) when sn == current_sn do
-    case :gen_tcp.send(socket, data) do
-      :ok -> send_queue(tail, sn+1, socket)
-      _ -> :error
-    end
-  end
-
-  defp send_queue(queue, current_sn, _socket), do: {queue, current_sn}
-
 end
